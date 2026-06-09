@@ -18,7 +18,7 @@ async function initApp() {
     allSites = await API.fetchUNESCOData();
     
     if (allSites.length === 0) {
-        UI.loader.innerHTML = "<p style='color:red'>Failed to load UNESCO data. Please check your internet connection or try again later.</p>";
+        UI.loader.innerHTML = "<p style='color:#ffcc00; padding:20px;'>Wait, we couldn't reach the UNESCO archives. <br><br> Please check if you are connected to the internet and refresh.</p>";
         return;
     }
     
@@ -26,25 +26,23 @@ async function initApp() {
 }
 
 async function loadNewSite() {
-    // Show loader, hide card
     UI.loader.classList.remove('hidden');
     UI.card.classList.add('hidden');
 
     const visited = Utils.getVisited();
     UI.count.innerText = visited.length;
 
-    // Filter logic
-    let availableSites = allSites.filter(s => !visited.includes(s.recordid));
+    let availableSites = allSites.filter(s => !visited.includes(s.name_en)); // Using name_en as ID
     if (availableSites.length === 0) {
-        sessionStorage.clear(); // Reset if all sites seen
+        sessionStorage.clear();
         availableSites = allSites;
     }
 
     currentSite = availableSites[Math.floor(Math.random() * availableSites.length)];
     
-    // FETCH: Using site_en instead of description
+    // FETCH: Using name_en
     const wiki = await API.getWikiDetails(
-        currentSite.site_en, 
+        currentSite.name_en, 
         currentSite.states_name_en
     );
 
@@ -52,48 +50,44 @@ async function loadNewSite() {
 }
 
 function updateUI(wiki) {
-    // Fill in the data
-    UI.name.innerText = currentSite.site_en;
+    UI.name.innerText = currentSite.name_en;
     UI.region.innerText = currentSite.region_en;
-    UI.desc.innerText = wiki?.description || "History details currently being archived...";
+    UI.desc.innerText = wiki?.description || currentSite.short_description_en || "No additional history available.";
     
-    // Image Handling
     const imgUrl = wiki?.thumbnail || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80';
     UI.bg.style.backgroundImage = `url('${imgUrl}')`;
     
-    // Google Maps Link
-    const lat = currentSite.coordinates?.lat || 0;
-    const lon = currentSite.coordinates?.lon || 0;
+    // Coordinates in this dataset are usually in a geo_point_2d object
+    const lat = currentSite.geo_point_2d?.lat || 0;
+    const lon = currentSite.geo_point_2d?.lon || 0;
     UI.streetView.href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
 
     setupQuiz();
 
-    // Hide loader, show card
     UI.loader.classList.add('hidden');
     UI.card.classList.remove('hidden');
-    Utils.saveVisited(currentSite.recordid);
+    Utils.saveVisited(currentSite.name_en);
 }
 
 function setupQuiz() {
     UI.quizOptions.innerHTML = '';
-    const correct = currentSite.states_name_en;
-    const distractors = Utils.generateDistractors(correct, currentSite.region_en, allSites);
+    const correct = currentSite.states_name_en.split(',')[0].trim();
+    const distractors = Utils.generateDistractors(currentSite.states_name_en, currentSite.region_en, allSites);
     
-    // Only take the first country name if there are multiple (e.g. "France, Spain")
-    const cleanCorrect = correct.split(',')[0].trim();
-    
-    const choices = Utils.shuffle([cleanCorrect, ...distractors]);
+    const choices = Utils.shuffle([correct, ...distractors]);
 
     choices.forEach(choice => {
         const btn = document.createElement('button');
         btn.className = 'quiz-btn';
         btn.innerText = choice;
         btn.onclick = () => {
-            if (choice === cleanCorrect) {
+            if (choice === correct) {
                 btn.classList.add('correct');
+                UI.nextBtn.innerText = "Correct! Discover More →";
             } else {
                 btn.classList.add('wrong');
-                alert(`Actually, it's in ${cleanCorrect}!`);
+                alert(`Not quite! This site is located in ${correct}.`);
+                UI.nextBtn.innerText = "Try Another Site →";
             }
             document.querySelectorAll('.quiz-btn').forEach(b => b.disabled = true);
         };
