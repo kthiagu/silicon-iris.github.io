@@ -16,12 +16,10 @@ const UI = {
 
 async function initApp() {
     allSites = await API.fetchUNESCOData();
-    
     if (allSites.length === 0) {
-        UI.loader.innerHTML = "<p style='color:#ffcc00; padding:20px;'>Wait, we couldn't reach the UNESCO archives. <br><br> Please check if you are connected to the internet and refresh.</p>";
+        UI.loader.innerHTML = "<h2>Connection Error</h2><p>Please check your internet and refresh.</p>";
         return;
     }
-    
     loadNewSite();
 }
 
@@ -32,7 +30,7 @@ async function loadNewSite() {
     const visited = Utils.getVisited();
     UI.count.innerText = visited.length;
 
-    let availableSites = allSites.filter(s => !visited.includes(s.name_en)); // Using name_en as ID
+    let availableSites = allSites.filter(s => !visited.includes(s.recordid));
     if (availableSites.length === 0) {
         sessionStorage.clear();
         availableSites = allSites;
@@ -40,9 +38,9 @@ async function loadNewSite() {
 
     currentSite = availableSites[Math.floor(Math.random() * availableSites.length)];
     
-    // FETCH: Using name_en
+    // IMPORTANT: In this API version, the field name is 'site_en'
     const wiki = await API.getWikiDetails(
-        currentSite.name_en, 
+        currentSite.site_en, 
         currentSite.states_name_en
     );
 
@@ -50,30 +48,29 @@ async function loadNewSite() {
 }
 
 function updateUI(wiki) {
-    UI.name.innerText = currentSite.name_en;
+    UI.name.innerText = currentSite.site_en;
     UI.region.innerText = currentSite.region_en;
-    UI.desc.innerText = wiki?.description || currentSite.short_description_en || "No additional history available.";
+    UI.desc.innerText = wiki?.description || currentSite.short_description_en;
     
     const imgUrl = wiki?.thumbnail || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80';
     UI.bg.style.backgroundImage = `url('${imgUrl}')`;
     
-    // Coordinates in this dataset are usually in a geo_point_2d object
-    const lat = currentSite.geo_point_2d?.lat || 0;
-    const lon = currentSite.geo_point_2d?.lon || 0;
+    // Coordinates handling for v1 API
+    const lat = currentSite.coordinates ? currentSite.coordinates[0] : 0;
+    const lon = currentSite.coordinates ? currentSite.coordinates[1] : 0;
     UI.streetView.href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
 
     setupQuiz();
 
     UI.loader.classList.add('hidden');
     UI.card.classList.remove('hidden');
-    Utils.saveVisited(currentSite.name_en);
+    Utils.saveVisited(currentSite.recordid);
 }
 
 function setupQuiz() {
     UI.quizOptions.innerHTML = '';
     const correct = currentSite.states_name_en.split(',')[0].trim();
     const distractors = Utils.generateDistractors(currentSite.states_name_en, currentSite.region_en, allSites);
-    
     const choices = Utils.shuffle([correct, ...distractors]);
 
     choices.forEach(choice => {
@@ -82,12 +79,10 @@ function setupQuiz() {
         btn.innerText = choice;
         btn.onclick = () => {
             if (choice === correct) {
-                btn.classList.add('correct');
-                UI.nextBtn.innerText = "Correct! Discover More →";
+                btn.style.background = "#2ecc71";
             } else {
-                btn.classList.add('wrong');
-                alert(`Not quite! This site is located in ${correct}.`);
-                UI.nextBtn.innerText = "Try Another Site →";
+                btn.style.background = "#e74c3c";
+                alert(`It's actually in ${correct}`);
             }
             document.querySelectorAll('.quiz-btn').forEach(b => b.disabled = true);
         };
