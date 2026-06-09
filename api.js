@@ -1,44 +1,49 @@
 const API = {
-    // 1. STARTER PACK (App works even if internet is down or API is 404)
+    // A larger, more diverse starter pack in case of network issues
     starterSites: [
-        { recordid: '1', site_en: 'Taj Mahal', states_name_en: 'India', region_en: 'Asia', coordinates: [27.1751, 78.0421], short_description_en: 'An immense mausoleum of white marble, built in Agra between 1631 and 1648.' },
-        { recordid: '2', site_en: 'Machu Picchu', states_name_en: 'Peru', region_en: 'Latin America', coordinates: [-13.1631, -72.5450], short_description_en: 'A 15th-century Inca citadel located in the Eastern Cordillera of southern Peru.' },
-        { recordid: '3', site_en: 'Mont-Saint-Michel', states_name_en: 'France', region_en: 'Europe', coordinates: [48.6361, -1.5115], short_description_en: 'A tidal island and mainland commune in Normandy, France.' },
-        { recordid: '4', site_en: 'Great Pyramid of Giza', states_name_en: 'Egypt', region_en: 'Africa', coordinates: [29.9792, 31.1342], short_description_en: 'The oldest and largest of the pyramids in the Giza pyramid complex.' },
-        { recordid: '5', site_en: 'Colosseum', states_name_en: 'Italy', region_en: 'Europe', coordinates: [41.8902, 12.4922], short_description_en: 'An oval amphitheatre in the centre of the city of Rome.' },
-        { recordid: '6', site_en: 'Petra', states_name_en: 'Jordan', region_en: 'Arab States', coordinates: [30.3285, 35.4444], short_description_en: 'A famous archaeological site in Jordan\'s southwestern desert.' },
-        { recordid: '7', site_en: 'Statue of Liberty', states_name_en: 'United States of America', region_en: 'North America', coordinates: [40.6892, -74.0445], short_description_en: 'A colossal neoclassical sculpture on Liberty Island in New York Harbor.' },
-        { recordid: '8', site_en: 'Angkor Wat', states_name_en: 'Cambodia', region_en: 'Asia', coordinates: [13.4125, 103.8670], short_description_en: 'A temple complex in Cambodia and the largest religious monument in the world.' }
+        { id: '1', name: 'Taj Mahal', country: 'India', region: 'Asia', lat: 27.1751, lon: 78.0421, info: 'An immense mausoleum of white marble.' },
+        { id: '2', name: 'Machu Picchu', country: 'Peru', region: 'Latin America', lat: -13.1631, lon: -72.5450, info: 'A 15th-century Inca citadel.' },
+        { id: '3', name: 'Mont-Saint-Michel', country: 'France', region: 'Europe', lat: 48.6361, lon: -1.5115, info: 'A tidal island and mainland commune in Normandy.' },
+        { id: '4', name: 'Great Pyramid of Giza', country: 'Egypt', region: 'Africa', lat: 29.9792, lon: 31.1342, info: 'The oldest and largest of the pyramids.' },
+        { id: '5', name: 'Colosseum', country: 'Italy', region: 'Europe', lat: 41.8902, lon: 12.4922, info: 'An oval amphitheatre in the centre of Rome.' },
+        { id: '6', name: 'Petra', country: 'Jordan', region: 'Arab States', lat: 30.3285, lon: 35.4444, info: 'A famous archaeological site in Jordan.' },
+        { id: '7', name: 'Statue of Liberty', country: 'United States', region: 'North America', lat: 40.6892, lon: -74.0445, info: 'A colossal neoclassical sculpture in NYC.' },
+        { id: '8', name: 'Angkor Wat', country: 'Cambodia', region: 'Asia', lat: 13.4125, lon: 103.8670, info: 'Largest religious monument in the world.' }
     ],
 
     async fetchUNESCOData() {
-        console.log("Attempting to fetch full database...");
+        // This is a stable, public JSON mirror of the UNESCO list (over 1,000 sites)
+        const DATAHUB_URL = 'https://pkgstore.datahub.io/core/unesco-world-heritage-sites/unesco-world-heritage-sites_json/data/78393e96191c98a58d34190c13745330/unesco-world-heritage-sites_json.json';
+        
+        console.log("Fetching full heritage database...");
         try {
-            // Trying a stable GitHub mirror of the UNESCO data
-            const response = await fetch('https://raw.githubusercontent.com/fomvasss/unesco-world-heritage-list/master/world-heritage-list.json');
-            if (!response.ok) throw new Error("GitHub Mirror 404");
+            const response = await fetch(DATAHUB_URL);
+            if (!response.ok) throw new Error("DataHub Mirror Unreachable");
             
             const data = await response.json();
-            console.log("Successfully loaded full database from GitHub");
-            
-            // Map the GitHub data format to our app's format
+            console.log(`Success! Loaded ${data.length} sites.`);
+
+            // We map the data to a consistent format regardless of source
             return data.map((item, index) => ({
-                recordid: index.toString(),
-                site_en: item.name_en,
-                states_name_en: item.states_en,
-                region_en: item.region_en,
-                coordinates: [parseFloat(item.latitude), parseFloat(item.longitude)],
-                short_description_en: item.short_description_en
+                id: index.toString(),
+                name: item.site || item.name_en,
+                country: item.states || item.states_name_en,
+                region: item.region || item.region_en,
+                // Some APIs use a string "lat,lon", others use separate fields
+                lat: item.latitude || (item.coordinates ? item.coordinates.split(',')[0] : 0),
+                lon: item.longitude || (item.coordinates ? item.coordinates.split(',')[1] : 0),
+                info: item.short_description || item.short_description_en || ""
             }));
         } catch (err) {
-            console.warn("External API failed. Using built-in Starter Pack Sites.");
+            console.warn("API failed, using Starter Pack:", err.message);
             return this.starterSites;
         }
     },
 
     async getWikiDetails(siteName, country) {
-        const query = siteName.split('(')[0].split(',')[0].trim();
-        const endpoint = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageimages&exintro&explaintext&titles=${encodeURIComponent(query)}&pithumbsize=1000&origin=*`;
+        // Clean the name for Wikipedia (e.g., remove "Historic Centre of...")
+        const cleanName = siteName.split('(')[0].split(',')[0].trim();
+        const endpoint = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageimages&exintro&explaintext&titles=${encodeURIComponent(cleanName)}&pithumbsize=1000&origin=*`;
         
         try {
             const response = await fetch(endpoint);
@@ -47,12 +52,12 @@ const API = {
             const pageId = Object.keys(pages)[0];
             
             if (pageId === "-1") {
-                // If specific site fails, try searching just the country for a generic background
+                // If the specific site fails, search for the Country as a fallback image
                 return await this.callWikiAPI(country);
             }
             
             return {
-                description: pages[pageId].extract || "Exploring the history of this site...",
+                description: pages[pageId].extract,
                 thumbnail: pages[pageId].thumbnail ? pages[pageId].thumbnail.source : null
             };
         } catch (err) {
