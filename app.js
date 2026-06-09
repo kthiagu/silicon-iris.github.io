@@ -16,10 +16,6 @@ const UI = {
 
 async function initApp() {
     allSites = await API.fetchUNESCOData();
-    if (allSites.length === 0) {
-        UI.loader.innerHTML = "<h2>Connection Error</h2><p>Please check your internet and refresh.</p>";
-        return;
-    }
     loadNewSite();
 }
 
@@ -37,13 +33,7 @@ async function loadNewSite() {
     }
 
     currentSite = availableSites[Math.floor(Math.random() * availableSites.length)];
-    
-    // IMPORTANT: In this API version, the field name is 'site_en'
-    const wiki = await API.getWikiDetails(
-        currentSite.site_en, 
-        currentSite.states_name_en
-    );
-
+    const wiki = await API.getWikiDetails(currentSite.site_en, currentSite.states_name_en);
     updateUI(wiki);
 }
 
@@ -55,9 +45,9 @@ function updateUI(wiki) {
     const imgUrl = wiki?.thumbnail || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80';
     UI.bg.style.backgroundImage = `url('${imgUrl}')`;
     
-    // Coordinates handling for v1 API
-    const lat = currentSite.coordinates ? currentSite.coordinates[0] : 0;
-    const lon = currentSite.coordinates ? currentSite.coordinates[1] : 0;
+    // Coordinates from the new Fail-Safe logic
+    const lat = currentSite.coordinates[0];
+    const lon = currentSite.coordinates[1];
     UI.streetView.href = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}`;
 
     setupQuiz();
@@ -80,9 +70,10 @@ function setupQuiz() {
         btn.onclick = () => {
             if (choice === correct) {
                 btn.style.background = "#2ecc71";
+                btn.innerText = "✓ " + choice;
             } else {
                 btn.style.background = "#e74c3c";
-                alert(`It's actually in ${correct}`);
+                alert(`Correct answer: ${correct}`);
             }
             document.querySelectorAll('.quiz-btn').forEach(b => b.disabled = true);
         };
