@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heritage Explorer | Discover the World</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for a clean, premium look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Dynamic Background Image Container -->
+    <div id="bg-overlay"></div>
+    <div id="site-image-bg"></div>
+
+    <main id="app-container">
+        <!-- Header / Stats -->
+        <header class="glass-panel">
+            <div class="logo">🌍 Heritage Explorer</div>
+            <div id="session-stats">Visited: <span id="visited-count">0</span></div>
+        </header>
+
+        <!-- Main Discovery Card -->
+        <section id="discovery-card" class="glass-panel hidden">
+            <div class="content-scroll">
+                <h1 id="site-name">Loading Wonder...</h1>
+                <p id="site-region" class="subtitle text-uppercase"></p>
+                
+                <div class="description-section">
+                    <h3>History & Significance</h3>
+                    <p id="site-description">Fetching the story of this location...</p>
+                </div>
+
+                <div class="travel-tips">
+                    <h3>Quick Geography</h3>
+                    <p id="site-coords"></p>
+                </div>
+            </div>
+
+            <!-- Quiz Section -->
+            <div id="quiz-container">
+                <h3>Where in the world is this?</h3>
+                <div id="quiz-options" class="grid-options">
+                    <!-- Buttons will be injected here by JS -->
+                    <button class="quiz-btn">Option 1</button>
+                    <button class="quiz-btn">Option 2</button>
+                    <button class="quiz-btn">Option 3</button>
+                    <button class="quiz-btn">Option 4</button>
+                </div>
+                <p id="quiz-feedback" class="hidden"></p>
+            </div>
+
+            <!-- Action Footer -->
+            <footer class="card-actions">
+                <a id="street-view-link" href="#" target="_blank" class="btn secondary">📍 Street View</a>
+                <button id="next-site-btn" class="btn primary">Explore Next Site →</button>
+            </footer>
+        </section>
+
+        <!-- Initial Loader -->
+        <div id="loader">
+            <div class="spinner"></div>
+            <p>Consulting UNESCO Archives...</p>
+        </div>
+    </main>
+
+    <script src="api.js"></script>
+    <script src="utils.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
